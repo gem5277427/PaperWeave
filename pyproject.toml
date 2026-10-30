@@ -1,0 +1,29 @@
+[project]
+name = "paperweave"
+version = "1.2.0"
+description = "本地优先的论文阅读工作台"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = ["pywebview>=5"]
+
+[project.urls]
+Repository = "https://github.com/gem5277427/PaperWeave"
+
+[project.scripts]
+paperweave = "paperweave.server:main"
+paperweave-desktop = "paperweave.desktop:main"
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.22.3",
+    "ruff>=0.16",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14.0"]
+build-backend = "uv_build"
+
+[tool.ruff.lint]
+ignore = ["BLE001"]

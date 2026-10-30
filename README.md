@@ -1,16 +1,16 @@
 # PaperWeave · 脉络
 
-一个本地优先的论文阅读工作台：读完一篇论文，把结构化总结放进来；PaperWeave 会把它和旧论文连成研究版图，并帮你把“局限、方法、评测”重新组合成可以动手的研究 idea。
+一个本地优先的论文阅读工作台：读完一篇论文，把结构化总结放进来；`PaperWeave` 会把它和旧论文连成研究版图，并帮你把“局限、方法、评测”重新组合成可以动手的研究 idea。
 
 这是 **Windows 桌面便携版**：解压后双击即可运行，不需要安装 Python、Node 或数据库。
 
 ## 快速开始
 
 1. 解压整个文件夹到任意位置（例如桌面）。
-2. 双击 **`启动PaperWeave.bat`**。
+2. 双击 **`PaperWeave.exe`**。
 3. 第一次打开是空库，从「添加论文」开始建立自己的阅读档案。
 
-关闭窗口即退出。数据会自动写入本文件夹的 `data/paperweave.json`。
+关闭窗口即退出。数据会自动写入 exe 旁边的 `data/paperweave.json`。
 
 > Windows 10/11 通常自带 Edge WebView2。若提示缺少 WebView2，请安装微软官方的“Microsoft Edge WebView2 Runtime”后再试。
 
@@ -34,31 +34,64 @@
 
 ## 目录结构
 
+源码仓库：
+
 ```text
-PaperWeave-Portable/
-├─ 启动PaperWeave.bat      双击启动
-├─ desktop.py              桌面窗口入口
-├─ server.py               本地静态服务 + 数据 API
-├─ index.html
-├─ assets/                 样式、图标
-├─ js/                     前端逻辑
-├─ runtime/                内置 Python 运行时（无需另装）
+PaperWeave/
+├─ pyproject.toml          项目与依赖声明（uv 管理）
+├─ src/paperweave/
+│  ├─ desktop.py           桌面窗口入口
+│  ├─ server.py            本地静态服务 + 数据 API
+│  └─ web/                 前端：index.html、assets/、js/
+├─ packaging/
+│  ├─ launcher.py          PyInstaller 入口
+│  └─ build.py             构建发布包
 └─ data/
    ├─ README.md
-   └─ paperweave.json      首次运行后自动生成
+   └─ paperweave.json      运行后自动生成
+```
+
+发布包（`uv run packaging/build.py` 产物）：
+
+```text
+PaperWeave-<version>-win64/
+├─ PaperWeave.exe          双击启动，自带 Python 运行时
+├─ LICENSE
+├─ LICENSES/
+├─ THIRD_PARTY_NOTICES.md
+└─ data/README.md
 ```
 
 ## 常见问题
 
-**双击 bat 出现“无法验证发布者”**
-这是 Windows 对从网络下载的 `.bat` 的安全提示，不是病毒。右键文件 → 属性 → 勾选“解除锁定”，或点击“更多信息 → 仍要运行”。
+**双击 exe 出现“Windows 已保护你的电脑”**
+这是 SmartScreen 对未签名程序的提示，不是病毒。点击“更多信息 → 仍要运行”，或右键 exe → 属性 → 勾选“解除锁定”。
 
 **窗口没有出现**
-确认 `runtime\pythonw.exe` 存在；如被杀毒软件隔离，请将整个文件夹加入信任。也可以在命令行运行 `runtime\python.exe desktop.py` 查看报错。
+先确认已安装 WebView2 Runtime；若杀毒软件把 exe 隔离了，请把解压后的整个文件夹加入信任。需要看报错时用命令行运行 `PaperWeave.exe --debug`，再按 `Ctrl+Shift+I` 打开开发者工具。
 
-**想从源码运行 / 二次开发**
-安装 Python 3.12 与 `pywebview`，在项目根目录运行 `python desktop.py`。前端是零构建的原生 HTML/CSS/JS。
+## 源码运行
+需要 [uv](https://docs.astral.sh/uv/)（会自动准备 Python 与依赖）：
+
+```bash
+uv sync                        # 创建 .venv 并安装依赖（含 pywebview）
+uv run paperweave-desktop      # 桌面窗口
+uv run paperweave              # 或只跑本地服务，浏览器打开 http://127.0.0.1:8765
+```
+
+前端是零构建的原生 HTML/CSS/JS，源文件在 `src/paperweave/web/`，改完刷新即可。
+
+## 打包发布
+
+在 Windows 上执行：
+
+```bash
+uv sync
+uv run packaging/build.py
+```
+
+产出 `dist/PaperWeave-<version>-win64/` 与同名 `.zip`：单文件 `PaperWeave.exe`（PyInstaller，内含 Python、pywebview 与前端资源），与 exe 同级附带许可证材料。双击 exe 即运行，数据写在 exe 旁边的 `data/`，无需安装。
 
 ## 许可
 
-代码以 MIT License 发布。内置 Python 运行时、第三方库与 WebView2 SDK 的许可见 `THIRD_PARTY_NOTICES.md`，完整许可证全文在 `LICENSES/`。
+代码以 MIT License 发布。打包进 exe 的 Python 运行时、第三方库与 WebView2 SDK 的许可见 `THIRD_PARTY_NOTICES.md`，完整许可证全文在 `LICENSES/`。

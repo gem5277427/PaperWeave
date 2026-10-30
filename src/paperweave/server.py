@@ -5,7 +5,6 @@ Serves the static app and stores the notebook in ./data/paperweave.json.
 Only binds to 127.0.0.1; there is no external upload and no dependency beyond
 the Python standard library.
 """
-from __future__ import annotations
 
 import argparse
 import functools
@@ -18,9 +17,14 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
-ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+from . import __version__
+
+PACKAGE_DIR = Path(__file__).resolve().parent
+WEB_ROOT = PACKAGE_DIR / "web"
+# 源码布局下 data/ 在项目根目录（src/paperweave 的上两级）；安装后回落到当前工作目录
+PROJECT_ROOT = PACKAGE_DIR.parents[1] if PACKAGE_DIR.parent.name == "src" else Path.cwd()
 FROZEN = bool(getattr(sys, "frozen", False))
-DATA_ROOT = Path(sys.executable).resolve().parent if FROZEN else ROOT
+DATA_ROOT = Path(sys.executable).resolve().parent if FROZEN else PROJECT_ROOT
 DATA_DIR = DATA_ROOT / "data"
 DATA_FILE = DATA_DIR / "paperweave.json"
 BACKUP_FILE = DATA_DIR / "paperweave.bak.json"
@@ -42,12 +46,12 @@ def write_data_bytes(raw):
         raise ValueError("body is not valid UTF-8 JSON") from exc
 
     if not isinstance(payload, dict):
-        raise ValueError("body must be a JSON object")
+        raise TypeError("body must be a JSON object")
     for key in ("papers", "links", "ideas"):
         if not isinstance(payload.get(key), list):
-            raise ValueError(f"body.{key} must be an array")
+            raise TypeError(f"body.{key} must be an array")
     if not isinstance(payload.get("profile"), dict):
-        raise ValueError("body.profile must be an object")
+        raise TypeError("body.profile must be an object")
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     text = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
@@ -74,17 +78,13 @@ def data_meta():
 
 
 class Handler(SimpleHTTPRequestHandler):
-    server_version = "PaperWeave/1.1"
+    server_version = f"PaperWeave/{__version__}"
 
     def _safe_path(self):
         path = unquote(urlparse(self.path).path).replace("\\", "/")
         while "//" in path:
             path = path.replace("//", "/")
         return path if path.startswith("/") else "/" + path
-
-    def _is_data_path(self, path):
-        lowered = path.casefold()
-        return lowered == "/data" or lowered.startswith("/data/")
 
     def _not_found(self):
         self._json(404, {"error": "not found"})
@@ -118,22 +118,7 @@ class Handler(SimpleHTTPRequestHandler):
             except BrokenPipeError:
                 pass
             return
-        if self._is_data_path(path):
-            self._not_found()
-            return
-        if path in ("/server.py", "/server.pyc"):
-            self._not_found()
-            return
         super().do_GET()
-
-    def do_HEAD(self):
-        path = self._safe_path()
-        if self._is_data_path(path) or path in ("/server.py", "/server.pyc"):
-            self.send_response(404)
-            self.send_header("Content-Length", "0")
-            self.end_headers()
-            return
-        super().do_HEAD()
 
     def do_PUT(self):
         if self._safe_path() != "/api/data":
@@ -165,7 +150,7 @@ class Handler(SimpleHTTPRequestHandler):
         raw = self.rfile.read(length)
         try:
             size = write_data_bytes(raw)
-        except ValueError as exc:
+        except (TypeError, ValueError) as exc:
             self._json(400, {"error": str(exc)})
             return
         except OSError as exc:
@@ -199,7 +184,7 @@ def main():
     parser.add_argument("--host", default="127.0.0.1", help="host to bind (default: 127.0.0.1)")
     args = parser.parse_args()
 
-    handler = functools.partial(Handler, directory=str(ROOT))
+    handler = functools.partial(Handler, directory=str(WEB_ROOT))
     ThreadingHTTPServer.allow_reuse_address = True
     try:
         httpd = ThreadingHTTPServer((args.host, args.port), handler)
@@ -209,7 +194,7 @@ def main():
         raise SystemExit(1)
 
     httpd.daemon_threads = True
-    print(f"[PaperWeave] serving {ROOT}")
+    print(f"[PaperWeave] serving {WEB_ROOT}")
     print(f"[PaperWeave] data file: {DATA_FILE}")
     print(f"[PaperWeave] open http://{args.host}:{args.port}")
     print("[PaperWeave] press Ctrl+C to stop", flush=True)

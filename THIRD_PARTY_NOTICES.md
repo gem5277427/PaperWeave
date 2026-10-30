@@ -4,7 +4,7 @@
 
 ## 内置运行时
 
-- **Python 3.12.10 (embeddable, 64-bit)**
+- **Python 3.12 (CPython, 64-bit)**，由 PyInstaller 打包进 `PaperWeave.exe`
   - 许可：Python Software Foundation License
   - 版权：Python Software Foundation
   - 全文：`LICENSES/python.txt`
@@ -29,7 +29,7 @@
 
 ## 运行环境：Microsoft Edge WebView2
 
-桌面窗口通过 pywebview 使用 Windows 的 Edge WebView2。随包的 `webview/lib` 下包含 Microsoft WebView2 SDK 的以下二进制：
+桌面窗口通过 pywebview 使用 Windows 的 Edge WebView2。随 `PaperWeave.exe` 打包的 `webview/lib` 下包含 Microsoft WebView2 SDK 的以下二进制：
 
 - `Microsoft.Web.WebView2.Core.dll`
 - `Microsoft.Web.WebView2.WinForms.dll`

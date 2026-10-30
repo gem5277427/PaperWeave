@@ -4,7 +4,6 @@
 Runs the existing local server in a background thread and opens the UI in a
 native WebView window (Edge WebView2 on Windows). No browser tab, no console.
 """
-from __future__ import annotations
 
 import argparse
 import ctypes
@@ -14,22 +13,19 @@ import sys
 import tempfile
 import threading
 from http.server import ThreadingHTTPServer
-from pathlib import Path
 
-ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-sys.path.insert(0, str(ROOT))
+from . import server
+
 sys.dont_write_bytecode = True
 
 # Keep WebView2's temporary profile inside the app folder instead of the CWD.
-_TMP = ROOT / "data" / ".tmp"
+_TMP = server.DATA_DIR / ".tmp"
 try:
     _TMP.mkdir(parents=True, exist_ok=True)
     if os.access(_TMP, os.W_OK):
         tempfile.tempdir = str(_TMP)
 except OSError:
     pass
-
-import server  # noqa: E402
 
 _MUTEX = None
 
@@ -55,7 +51,7 @@ def show_error(message: str) -> None:
 def start_server(port: int = 0):
     """Start PaperWeave's HTTP/API server on localhost and return (httpd, port)."""
     ThreadingHTTPServer.allow_reuse_address = True
-    handler = functools.partial(server.Handler, directory=str(server.ROOT))
+    handler = functools.partial(server.Handler, directory=str(server.WEB_ROOT))
     httpd = ThreadingHTTPServer(("127.0.0.1", port), handler)
     httpd.daemon_threads = True
     thread = threading.Thread(target=httpd.serve_forever, name="paperweave-server", daemon=True)
@@ -79,9 +75,9 @@ def main() -> int:
     except ImportError:
         show_error(
             "缺少 pywebview。\n\n"
-            "请先在项目文件夹运行（用 py 确保装到双击 .pyw 所用的解释器）：\n"
-            "py -m pip install -r requirements-desktop.txt\n\n"
-            "然后重新双击 PaperWeave.pyw；也可以改用 启动PaperWeave桌面版.bat。"
+            "请在项目文件夹运行：\n"
+            "uv sync\n\n"
+            "然后运行 uv run paperweave-desktop 或双击 PaperWeave.bat。"
         )
         return 1
 
@@ -92,7 +88,7 @@ def main() -> int:
         return 1
 
     url = f"http://127.0.0.1:{port}/index.html"
-    icon = ROOT / "assets" / "paperweave.ico"
+    icon = server.WEB_ROOT / "assets" / "paperweave.ico"
     window = webview.create_window(
         "PaperWeave · 脉络",
         url,
